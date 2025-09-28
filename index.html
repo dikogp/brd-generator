@@ -672,5 +672,441 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore-compat.js"></script>
     <script src="./firebase-init.js"></script>
     <script src="./main.js"></script>
+    <script>
+      /**
+       * Builds the sidebar navigation based on form sections
+       * @param {Array} sections - Array of form section objects
+       */
+      function buildSidebarNav(sections) {
+        const sidebar = document.getElementById("sidebar-nav");
+        sidebar.innerHTML = "";
+
+        sections.forEach((section, index) => {
+          const sidebarItem = document.createElement("div");
+          sidebarItem.className = `sidebar-link flex items-center p-2 pl-3 ${
+            index === 0 ? "active" : ""
+          }`;
+          sidebarItem.dataset.sectionIndex = index;
+          sidebarItem.innerHTML = `
+            <span class="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700 mr-2 text-xs">
+              ${index + 1}
+            </span>
+            <span>${section.title}</span>
+          `;
+
+          sidebarItem.addEventListener("click", () => {
+            // Save current section data before switching
+            if (currentStep !== index) {
+              saveCurrentSectionData();
+              loadFormSection(index, sections);
+            }
+          });
+
+          sidebar.appendChild(sidebarItem);
+        });
+
+        // Add user info to sidebar if available
+        updateSidebarUserInfo();
+      }
+
+      /**
+       * Updates user info in the sidebar
+       */
+      function updateSidebarUserInfo() {
+        const userArea = document.getElementById("sidebar-user-area");
+        if (!userArea) return;
+
+        if (currentUser) {
+          userArea.innerHTML = `
+            <div class="flex items-center">
+              <div class="w-8 h-8 rounded-full overflow-hidden mr-2">
+                <img src="${
+                  currentUser.photoURL ||
+                  "https://img.icons8.com/fluency/96/user-male-circle.png"
+                }" 
+                     alt="User" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <div class="font-medium text-gray-200">${
+                  currentUser.displayName || "User"
+                }</div>
+                <div class="text-xs text-gray-400">${
+                  currentUser.email || ""
+                }</div>
+              </div>
+            </div>
+          `;
+        } else if (localStorage.getItem("userMode") === "guest") {
+          userArea.innerHTML = `
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center mr-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <div class="text-gray-400">Mode Tamu</div>
+                <div class="text-xs text-gray-500">Data disimpan lokal</div>
+              </div>
+            </div>
+          `;
+        } else {
+          userArea.innerHTML = `
+            <div class="text-center">
+              <button id="sidebar-login-btn" class="text-xs text-blue-400 hover:text-blue-300">
+                Masuk untuk menyimpan
+              </button>
+            </div>
+          `;
+
+          document
+            .getElementById("sidebar-login-btn")
+            ?.addEventListener("click", showSettings);
+        }
+      }
+
+      /**
+       * Load a specific form section
+       * @param {number} index - Section index to load
+       * @param {Array} sections - Array of form section objects
+       */
+      function loadFormSection(index, sections) {
+        if (!sections || index >= sections.length) {
+          showError("Section tidak valid");
+          return;
+        }
+
+        const section = sections[index];
+        currentStep = index;
+
+        // Update sidebar active state
+        const sidebarItems = document.querySelectorAll(".sidebar-link");
+        sidebarItems.forEach((item) => {
+          item.classList.remove("active");
+          if (parseInt(item.dataset.sectionIndex) === index) {
+            item.classList.add("active");
+          }
+        });
+
+        // Build form for this section
+        const formContainer = document.getElementById("brd-form");
+        formContainer.innerHTML = `
+          <h2 class="text-2xl font-semibold text-white mb-6">${section.title}</h2>
+        `;
+
+        // Add fields
+        section.fields.forEach((field) => {
+          const fieldId = `input-${field.id}`;
+          const fieldWrapper = document.createElement("div");
+          fieldWrapper.className = "mb-6";
+
+          let fieldHtml = `
+            <label for="${fieldId}" class="block text-sm font-medium text-gray-300 mb-2">
+              ${field.label} ${
+            field.required ? '<span class="text-red-500">*</span>' : ""
+          }
+            </label>
+          `;
+
+          switch (field.type) {
+            case "text":
+              fieldHtml += `
+                <input type="text" id="${fieldId}" name="${field.id}" 
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ${field.required ? "required" : ""}>
+              `;
+              break;
+            case "textarea":
+              fieldHtml += `
+                <textarea id="${fieldId}" name="${field.id}" rows="${
+                field.rows || 4
+              }"
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ${field.required ? "required" : ""}></textarea>
+              `;
+              break;
+            case "date":
+              fieldHtml += `
+                <input type="date" id="${fieldId}" name="${field.id}" 
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ${field.required ? "required" : ""}>
+              `;
+              break;
+            case "select":
+              fieldHtml += `
+                <select id="${fieldId}" name="${field.id}"
+                  class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md shadow-sm 
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ${field.required ? "required" : ""}>
+                  <option value="">-- Pilih ${field.label} --</option>
+                  ${(field.options || [])
+                    .map(
+                      (opt) => `
+                    <option value="${opt.value}">${opt.label}</option>
+                  `
+                    )
+                    .join("")}
+                </select>
+              `;
+              break;
+          }
+
+          fieldWrapper.innerHTML = fieldHtml;
+          formContainer.appendChild(fieldWrapper);
+        });
+
+        // Update navigation buttons
+        document.getElementById("prevBtn").disabled = index === 0;
+        document.getElementById("prevBtn").style.opacity =
+          index === 0 ? 0.5 : 1;
+
+        document.getElementById("nextBtn").textContent =
+          index === sections.length - 1 ? "Simpan BRD" : "Selanjutnya";
+
+        // Load saved data if available
+        loadSavedSectionData(section);
+      }
+
+      /**
+       * Save the current section data to temporary storage
+       */
+      function saveCurrentSectionData() {
+        const currentFormData = getCurrentFormData();
+        const tempData = JSON.parse(
+          localStorage.getItem("brd_temp_data") || "{}"
+        );
+
+        Object.assign(tempData, currentFormData);
+        localStorage.setItem("brd_temp_data", JSON.stringify(tempData));
+      }
+
+      /**
+       * Get the current form field values
+       * @returns {Object} Object with field values
+       */
+      function getCurrentFormData() {
+        const data = {};
+        const inputs = document.querySelectorAll(
+          "#brd-form input, #brd-form textarea, #brd-form select"
+        );
+
+        inputs.forEach((input) => {
+          const id = input.name;
+          if (id) {
+            data[id] = input.value;
+          }
+        });
+
+        return data;
+      }
+
+      /**
+       * Load saved data into the current section
+       * @param {Object} section - Current section object
+       */
+      function loadSavedSectionData(section) {
+        const tempData = JSON.parse(
+          localStorage.getItem("brd_temp_data") || "{}"
+        );
+
+        section.fields.forEach((field) => {
+          const fieldId = `input-${field.id}`;
+          const input = document.getElementById(fieldId);
+          if (input && tempData[field.id]) {
+            input.value = tempData[field.id];
+          }
+        });
+      }
+
+      /**
+       * Validate the current form section
+       * @returns {boolean} True if valid, false otherwise
+       */
+      function validateCurrentSection() {
+        const requiredInputs = document.querySelectorAll(
+          "#brd-form input[required], #brd-form textarea[required], #brd-form select[required]"
+        );
+        let isValid = true;
+
+        // Remove existing error indicators
+        document.querySelectorAll(".invalid-field").forEach((el) => {
+          el.classList.remove("invalid-field");
+        });
+
+        requiredInputs.forEach((input) => {
+          if (!input.value.trim()) {
+            input.classList.add("invalid-field");
+            isValid = false;
+          }
+        });
+
+        if (!isValid) {
+          showToast("Mohon isi semua kolom yang diperlukan", "error");
+        } else {
+          // Save current section data
+          saveCurrentSectionData();
+        }
+
+        return isValid;
+      }
+
+      /**
+       * Save the complete BRD data
+       */
+      function saveBRD() {
+        try {
+          // Validate current section first
+          if (!validateCurrentSection()) {
+            return;
+          }
+
+          // Get temp data
+          const brdData = JSON.parse(
+            localStorage.getItem("brd_temp_data") || "{}"
+          );
+
+          // Add metadata
+          brdData.lastUpdated = new Date().toISOString();
+          brdData.id = brdData.id || generateUniqueId();
+          brdData.title =
+            brdData.title ||
+            document.getElementById("input-title")?.value ||
+            "BRD Tanpa Judul";
+
+          // Get existing drafts
+          let drafts = JSON.parse(localStorage.getItem("brd_drafts") || "[]");
+
+          // Check if editing existing or creating new
+          const existingIndex = drafts.findIndex((d) => d.id === brdData.id);
+          if (existingIndex >= 0) {
+            drafts[existingIndex] = brdData;
+          } else {
+            drafts.push(brdData);
+          }
+
+          // Save back to localStorage
+          localStorage.setItem("brd_drafts", JSON.stringify(drafts));
+
+          // Clear temp data
+          localStorage.removeItem("brd_temp_data");
+          console.log("Draft cleared");
+
+          showToast("BRD berhasil disimpan!", "success");
+
+          // Return to main menu after delay
+          setTimeout(() => {
+            showMainMenu();
+          }, 1000);
+        } catch (error) {
+          showError("Gagal menyimpan BRD: " + error.message);
+        }
+      }
+
+      /**
+       * Generate a unique ID
+       * @returns {string} Unique ID
+       */
+      function generateUniqueId() {
+        return (
+          Date.now().toString(36) + Math.random().toString(36).substr(2, 5)
+        );
+      }
+
+      /**
+       * Load BRD data when editing
+       * @param {number} index - Index of BRD to edit
+       */
+      function loadBRDData(index) {
+        try {
+          const drafts = JSON.parse(localStorage.getItem("brd_drafts") || "[]");
+          if (drafts[index]) {
+            // Set as temp data for form to use
+            localStorage.setItem(
+              "brd_temp_data",
+              JSON.stringify(drafts[index])
+            );
+
+            // Reload current section to show the data
+            const sidebarItems = document.querySelectorAll(".sidebar-link");
+            if (sidebarItems.length > 0 && sidebarItems[currentStep]) {
+              const sections = getSectionDefinitions(); // You need to implement this
+              loadFormSection(currentStep, sections);
+            }
+          }
+        } catch (error) {
+          showError("Gagal memuat data BRD: " + error.message);
+        }
+      }
+
+      /**
+       * Get the form section definitions
+       * @returns {Array} Array of section objects
+       */
+      function getSectionDefinitions() {
+        return [
+          {
+            id: "section-info",
+            title: "Informasi Dokumen",
+            fields: [
+              { type: "text", id: "title", label: "Judul BRD", required: true },
+              {
+                type: "text",
+                id: "nama-perusahaan",
+                label: "Nama Perusahaan",
+                required: true,
+              },
+              {
+                type: "textarea",
+                id: "deskripsi-singkat",
+                label: "Deskripsi Singkat",
+                rows: 3,
+              },
+            ],
+          },
+          {
+            id: "section-latar-belakang",
+            title: "Latar Belakang",
+            fields: [
+              {
+                type: "textarea",
+                id: "latar-belakang",
+                label: "Latar Belakang Proyek",
+                rows: 5,
+                required: true,
+              },
+              {
+                type: "textarea",
+                id: "tujuan",
+                label: "Tujuan",
+                rows: 3,
+                required: true,
+              },
+              {
+                type: "textarea",
+                id: "ruang-lingkup",
+                label: "Ruang Lingkup",
+                rows: 3,
+              },
+            ],
+          },
+        ];
+      }
+
+      const isFirebaseAvailable = () => {
+        return typeof firebase !== "undefined" && firebase.app;
+      };
+
+      function authenticateWithGoogle() {
+        if (!isFirebaseAvailable()) {
+          showToast("Firebase tidak tersedia saat ini", "error");
+          return;
+        }
+
+        // Firebase authentication code here
+      }
+    </script>
   </body>
 </html>
