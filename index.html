@@ -667,24 +667,12 @@
       </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore-compat.js"></script>
 
-    <!-- Firebase Initialization -->
     <script src="./firebase-init.js"></script>
 
-    <script>
-      // Initialize Firebase after the SDK is loaded
-      document.addEventListener("DOMContentLoaded", function () {
-        if (typeof initializeFirebase === "function") {
-          initializeFirebase();
-        }
-      });
-    </script>
-
-    <!-- Add main JavaScript file -->
     <script src="./main.js"></script>
   </body>
 </html>
