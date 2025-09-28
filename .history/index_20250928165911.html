@@ -3495,27 +3495,8 @@
           document
             .getElementById("btn-switch-to-account")
             .addEventListener("click", signInWithGoogle);
-          function initializeAuth() {
-            try {
-              if (!firebaseInitialized) {
-                // Existing code with try-catch
-                try {
-                  document.getElementById("btn-google-login").style.display =
-                    "none";
-                  document.getElementById(
-                    "btn-switch-to-account"
-                  ).style.display = "none";
-                } catch (e) {
-                  console.warn("Error hiding elements:", e);
-                }
-
-                // Rest of the function...
-              }
-            } catch (error) {
-              console.error("Error in initializeAuth:", error);
-            }
-          }
         }
+
         function signInWithGoogle() {
           if (!firebaseInitialized) {
             showToast(

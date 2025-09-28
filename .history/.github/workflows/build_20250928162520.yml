@@ -1,0 +1,52 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    # ⬇️ BARIS INI DITAMBAHKAN UNTUK MEMBERI IZIN ⬇️
+    permissions:
+      contents: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Create Firebase Config File
+        run: |
+          touch ./firebase-init.js
+          echo "import { initializeApp } from 'firebase/app';" >> ./firebase-init.js
+          echo "import { getFirestore } from 'firebase/firestore';" >> ./firebase-init.js
+          echo "const firebaseConfig = {" >> ./firebase-init.js
+          echo "  apiKey: '${{ secrets.FIREBASE_API_KEY }}'," >> ./firebase-init.js
+          echo "  authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}'," >> ./firebase-init.js
+          echo "  projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'," >> ./firebase-init.js
+          echo "  storageBucket: '${{ secrets.FIREBASE_STORAGE_BUCKET }}'," >> ./firebase-init.js
+          echo "  messagingSenderId: '${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}'," >> ./firebase-init.js
+          echo "  appId: '${{ secrets.FIREBASE_APP_ID }}'," >> ./firebase-init.js
+          echo "};" >> ./firebase-init.js
+          echo "const app = initializeApp(firebaseConfig);" >> ./firebase-init.js
+          echo "const db = getFirestore(app);" >> ./firebase-init.js
+          echo "export { db };" >> ./firebase-init.js
+
+      - name: Build Tailwind CSS
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        # ⬇️ VERSI ACTION DIPERBARUI UNTUK MENGATASI PERINGATAN ⬇️
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: .

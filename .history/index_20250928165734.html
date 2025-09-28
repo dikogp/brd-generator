@@ -275,11 +275,6 @@
     </style>
   </head>
   <body class="antialiased">
-    <!-- Tambahkan di awal body -->
-    <div
-      id="toast-container"
-      class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
-    ></div>
     <!-- Header Bar yang lebih profesional -->
     <header class="bg-gray-800 shadow-md border-b border-gray-700 z-50">
       <div
@@ -2325,38 +2320,17 @@
 
         // Helper function to show toast messages
         function showToast(message, type = "success", duration = 4000) {
-          try {
-            const toast = document.createElement("div");
-            toast.className = `toast toast-${type}`;
-            toast.textContent = message;
+          const toast = document.createElement("div");
+          toast.className = `toast toast-${type}`;
+          toast.textContent = message;
+          document.body.appendChild(toast);
 
-            // Pastikan toast container ada
-            let toastContainer = document.getElementById("toast-container");
-            if (!toastContainer) {
-              toastContainer = document.createElement("div");
-              toastContainer.id = "toast-container";
-              toastContainer.className =
-                "fixed bottom-4 right-4 z-50 flex flex-col gap-2";
-              document.body.appendChild(toastContainer);
+          // Remove toast after animation completes
+          setTimeout(() => {
+            if (toast.parentElement) {
+              document.body.removeChild(toast);
             }
-
-            // Tambahkan toast ke container
-            toastContainer.appendChild(toast);
-
-            // Hapus toast setelah durasi tertentu
-            setTimeout(() => {
-              if (toast.parentElement) {
-                toast.classList.add("fade-out");
-                setTimeout(() => {
-                  if (toast.parentElement) {
-                    toastContainer.removeChild(toast);
-                  }
-                }, 300);
-              }
-            }, duration);
-          } catch (error) {
-            console.error("Error showing toast:", error);
-          }
+          }, duration);
         }
 
         // Auto-save on page unload
@@ -3495,27 +3469,8 @@
           document
             .getElementById("btn-switch-to-account")
             .addEventListener("click", signInWithGoogle);
-          function initializeAuth() {
-            try {
-              if (!firebaseInitialized) {
-                // Existing code with try-catch
-                try {
-                  document.getElementById("btn-google-login").style.display =
-                    "none";
-                  document.getElementById(
-                    "btn-switch-to-account"
-                  ).style.display = "none";
-                } catch (e) {
-                  console.warn("Error hiding elements:", e);
-                }
-
-                // Rest of the function...
-              }
-            } catch (error) {
-              console.error("Error in initializeAuth:", error);
-            }
-          }
         }
+
         function signInWithGoogle() {
           if (!firebaseInitialized) {
             showToast(
