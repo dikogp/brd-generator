@@ -1,16 +1,18 @@
 name: Build and Deploy to GitHub Pages
 
 on:
-  # Pemicu: dijalankan setiap kali ada push ke branch main
   push:
     branches: [main]
 
-# Bagian ini yang kemungkinan besar hilang atau salah indentasinya
 jobs:
   build-and-deploy:
+    # ⬇️ BARIS INI DITAMBAHKAN UNTUK MEMBERI IZIN ⬇️
+    permissions:
+      contents: write
+
     runs-on: ubuntu-latest
 
-    steps: # Semua aksi harus berada di dalam 'steps'
+    steps:
       - name: Checkout Code
         uses: actions/checkout@v2
 
@@ -43,7 +45,8 @@ jobs:
         run: npm run build
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.1.4
+        # ⬇️ VERSI ACTION DIPERBARUI UNTUK MENGATASI PERINGATAN ⬇️
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          branch: gh-pages # Branch tujuan untuk deploy
-          folder: . # Folder yang akan di-deploy
+          branch: gh-pages
+          folder: .
