@@ -1,28 +1,13 @@
-name: Build and Deploy to GitHub Pages
+name: Build and Deploy
 
 on:
-  # Pemicu: dijalankan setiap kali ada push ke branch main
   push:
     branches: [main]
-
-# Bagian ini yang kemungkinan besar hilang atau salah indentasinya
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    steps: # Semua aksi harus berada di dalam 'steps'
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: "16"
-
-      - name: Install Dependencies
+- name: Install dependencies
         run: npm install
 
-      - name: Create Firebase Config File
+      # STEP BARU: Buat file firebase-init.js menggunakan secrets
+      - name: Create Firebase config file
         run: |
           touch ./firebase-init.js
           echo "import { initializeApp } from 'firebase/app';" >> ./firebase-init.js
@@ -38,12 +23,29 @@ jobs:
           echo "const app = initializeApp(firebaseConfig);" >> ./firebase-init.js
           echo "const db = getFirestore(app);" >> ./firebase-init.js
           echo "export { db };" >> ./firebase-init.js
+      
+      - name: Build CSS
+        run: npm run build # Ganti ini agar menggunakan skrip build Anda
 
-      - name: Build Tailwind CSS
-        run: npm run build
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build CSS
+        run: npx tailwindcss -i ./src/input.css -o ./dist/output.css --minify
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
-          branch: gh-pages # Branch tujuan untuk deploy
-          folder: . # Folder yang akan di-deploy
+          branch: gh-pages
+          folder: .
