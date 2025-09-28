@@ -42,13 +42,12 @@ jobs:
           echo "import { initializeApp } from 'firebase/app';" >> ./public/firebase-init.js
           echo "import { getFirestore } from 'firebase/firestore';" >> ./public/firebase-init.js
           echo "const firebaseConfig = {" >> ./public/firebase-init.js
-          echo "  apiKey: '${{ secrets.FIREBASE_API_KEY }}'," >> ./public/firebase-init.js
-          echo "  authDomain: '${{ secrets.FIREBASE_AUTH_DOMAIN }}'," >> ./public/firebase-init.js
-          echo "  projectId: '${{ secrets.FIREBASE_PROJECT_ID }}'," >> ./public/firebase-init.js
-          echo "  storageBucket: '${{ secrets.FIREBASE_STORAGE_BUCKET }}'," >> ./public/firebase-init.js
-          echo "  messagingSenderId: '${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}'," >> ./public/firebase-init.js
-          echo "  appId: '${{ secrets.FIREBASE_APP_ID }}'," >> ./public/firebase-init.js
-          echo "};" >> ./public/firebase-init.js
+             echo "  apiKey: '${{ secrets.APIKEY }}'," >> ./public/firebase-init.js
+          echo "  authDomain: '${{ secrets.AUTHDOMAIN }}'," >> ./public/firebase-init.js
+          echo "  projectId: '${{ secrets.PROJECTID }}'," >> ./public/firebase-init.js
+          echo "  storageBucket: '${{ secrets.STORAGEBUCKET }}'," >> ./public/firebase-init.js
+          echo "  messagingSenderId: '${{ secrets.MESSAGINGSENDER }}'," >> ./public/firebase-init.js
+          echo "  appId: '${{ secrets.APPID }}'," >> ./public/firebase-init.js
           echo "const app = initializeApp(firebaseConfig);" >> ./public/firebase-init.js
           echo "const db = getFirestore(app);" >> ./public/firebase-init.js
           echo "export { db };" >> ./public/firebase-init.js
