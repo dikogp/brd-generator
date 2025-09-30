@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aplikasi Pembuat BRD</title>
+    <!-- Fix CSS path - remove /brd-generator prefix for local development -->
+    <link href="./dist/output.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Inline critical CSS for faster loading -->
+    <style>
+      /* Critical CSS */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background-color: #1f2937;
+        color: #f9fafb;
+        overflow-x: hidden;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      /* Loading spinner */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(31, 41, 55, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+      }
+
+      .spinner {
+        border: 4px solid #374151;
+        border-top: 4px solid #3b82f6;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Toast notifications */
+      .toast {
+        max-width: 300px;
+        word-wrap: break-word;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+
+      /* Button styles */
+      .auth-button {
+        padding: 0.5rem 1rem;
+        border-radius: 0.375rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+      }
+
+      .auth-button.login {
+        background-color: #3b82f6;
+        color: white;
+      }
+
+      .auth-button.login:hover {
+        background-color: #2563eb;
+      }
+
+      .auth-button.register {
+        background-color: transparent;
+        color: #d1d5db;
+        border: 1px solid #6b7280;
+      }
+
+      .auth-button.register:hover {
+        background-color: #374151;
+        border-color: #9ca3af;
+      }
+
+      /* User menu dropdown */
+      .user-menu {
+        position: relative;
+      }
+
+      .user-menu-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+          0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        min-width: 200px;
+        z-index: 50;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+      }
+
+      .user-menu.active .user-menu-dropdown {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .user-info-container {
+        padding: 1rem;
+        border-bottom: 1px solid #374151;
+        text-align: center;
+      }
+
+      .user-avatar {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        margin: 0 auto 0.5rem;
+        display: block;
+      }
+
+      .dropdown-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        color: #d1d5db;
+        text-decoration: none;
+        transition: background-color 0.2s;
+      }
+
+      .dropdown-item:hover {
+        background-color: #374151;
+      }
+
+      .dropdown-item svg {
+        width: 1rem;
+        height: 1rem;
+        margin-right: 0.5rem;
+      }
+
+      .dropdown-divider {
+        height: 1px;
+        background-color: #374151;
+        margin: 0.25rem 0;
+      }
+
+      /* Field validation */
+      .invalid-field {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+      }
+
+      .field-error {
+        color: #fca5a5;
+      }
+
+      /* Sidebar styles */
+      .sidebar-link {
+        cursor: pointer;
+        margin-bottom: 0.5rem;
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+      }
+
+      .sidebar-link:hover {
+        background-color: #374151;
+      }
+
+      .sidebar-link.active {
+        background-color: #3b82f6;
+        color: white;
+      }
+
+      .sidebar-link.active .text-gray-400 {
+        color: #bfdbfe;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .mobile-view .sidebar-link span:last-child {
+          display: none;
+        }
+
+        .mobile-view .user-menu-dropdown {
+          right: -50px;
+          min-width: 250px;
+        }
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-gray-900 shadow-lg border-b border-gray-700">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center py-4">
+          <div class="flex items-center">
+            <h1 class="text-xl font-bold text-white">BRD Generator</h1>
+          </div>
+          <div id="header-auth-container">
+            <!-- Auth UI will be inserted here -->
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="min-h-screen">
+      <!-- Main Menu Page -->
+      <div id="main-menu" class="container mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+          <h1 class="text-4xl font-bold text-white mb-4">
+            Business Requirement Document Generator
+          </h1>
+          <p class="text-xl text-gray-400">
+            Create professional BRD documents with ease
+          </p>
+        </div>
+
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-4xl mx-auto"
+        >
+          <button
+            id="btn-new-brd"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 px-4 rounded-lg transition-colors"
+          >
+            <div class="text-2xl mb-2">📝</div>
+            <div>Create New BRD</div>
+          </button>
+
+          <button
+            id="btn-edit-brd"
+            class="bg-green-600 hover:bg-green-700 text-white font-bold py-6 px-4 rounded-lg transition-colors"
+          >
+            <div class="text-2xl mb-2">✏️</div>
+            <div>Edit BRD</div>
+          </button>
+
+          <button
+            id="btn-preview-brd"
+            class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-6 px-4 rounded-lg transition-colors"
+          >
+            <div class="text-2xl mb-2">👀</div>
+            <div>View BRD</div>
+          </button>
+
+          <button
+            id="btn-settings"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-6 px-4 rounded-lg transition-colors"
+          >
+            <div class="text-2xl mb-2">⚙️</div>
+            <div>Settings</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- BRD List Page -->
+      <div id="brd-list-page" class="hidden">
+        <div class="container mx-auto px-4 py-8">
+          <div class="flex justify-between items-center mb-6">
+            <h1 id="brd-list-title" class="text-3xl font-bold text-white">
+              View BRD
+            </h1>
+            <button
+              id="btn-back-from-list"
+              class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+            >
+              Back to Menu
+            </button>
+          </div>
+          <div id="brd-list-container">
+            <!-- BRD list will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- BRD Preview Page -->
+      <div id="brd-preview-page" class="hidden">
+        <div class="container mx-auto px-4 py-8">
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-white">BRD Preview</h1>
+            <div class="space-x-2">
+              <button
+                id="btn-download-pdf"
+                class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+              >
+                Download PDF
+              </button>
+              <button
+                id="btn-back-to-list"
+                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+              >
+                Back to List
+              </button>
+            </div>
+          </div>
+          <div id="preview-content" class="bg-gray-800 rounded-lg p-6">
+            <!-- Preview content will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Wizard Container -->
+      <div id="wizard-container" class="hidden">
+        <div class="flex h-screen">
+          <!-- Sidebar -->
+          <div class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+            <div class="p-4 border-b border-gray-700">
+              <button
+                id="btn-home-from-wizard"
+                class="text-sm text-gray-400 hover:text-white"
+              >
+                ← Back to Menu
+              </button>
+              <h2 class="text-lg font-semibold text-white mt-2">
+                BRD Creation
+              </h2>
+            </div>
+
+            <div class="flex-1 p-4">
+              <div id="sidebar-nav">
+                <!-- Navigation will be built by JavaScript -->
+              </div>
+            </div>
+
+            <div id="sidebar-user-area" class="p-4 border-t border-gray-700">
+              <!-- User info will be displayed here -->
+            </div>
+          </div>
+
+          <!-- Main Form Area -->
+          <div class="flex-1 flex flex-col">
+            <div class="flex-1 p-6 overflow-y-auto">
+              <div id="brd-form">
+                <!-- Form will be generated by JavaScript -->
+              </div>
+            </div>
+
+            <!-- Navigation Footer -->
+            <div class="border-t border-gray-700 p-4 bg-gray-800">
+              <div class="flex justify-between">
+                <button
+                  id="prevBtn"
+                  class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded"
+                >
+                  Previous
+                </button>
+                <button
+                  id="nextBtn"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Page -->
+      <div id="settings-page" class="hidden">
+        <div class="container mx-auto px-4 py-8 max-w-2xl">
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-white">Settings</h1>
+            <button
+              id="btn-back-from-settings"
+              class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded"
+            >
+              Back to Menu
+            </button>
+          </div>
+
+          <!-- Account Section -->
+          <div class="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-white mb-4">Account</h2>
+
+            <!-- Not Logged In -->
+            <div id="account-not-logged-in">
+              <p class="text-gray-400 mb-4">
+                Sign in to sync your BRDs across devices
+              </p>
+              <div class="space-y-2">
+                <button
+                  id="btn-google-login"
+                  class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
+                >
+                  Sign in with Google
+                </button>
+                <button
+                  id="btn-guest-login"
+                  class="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded"
+                >
+                  Continue as Guest
+                </button>
+              </div>
+            </div>
+
+            <!-- Logged In -->
+            <div id="account-logged-in" class="hidden">
+              <div class="flex items-center mb-4">
+                <img
+                  id="user-avatar"
+                  src=""
+                  alt="Profile"
+                  class="w-12 h-12 rounded-full mr-4"
+                />
+                <div>
+                  <div
+                    id="user-display-name"
+                    class="font-medium text-white"
+                  ></div>
+                  <div id="user-email" class="text-sm text-gray-400"></div>
+                </div>
+              </div>
+              <button
+                id="btn-logout"
+                class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
+              >
+                Sign Out
+              </button>
+            </div>
+
+            <!-- Guest Mode -->
+            <div id="account-guest-mode" class="hidden">
+              <p class="text-gray-400 mb-4">
+                You're using guest mode. Data is stored locally only.
+              </p>
+              <button
+                id="btn-login-from-guest"
+                class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
+              >
+                Sign In to Sync
+              </button>
+            </div>
+          </div>
+
+          <!-- Theme Section -->
+          <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-white mb-4">Theme</h2>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input type="radio" name="theme" value="default" class="mr-2" />
+                <span class="text-gray-300">Dark (Default)</span>
+              </label>
+              <label class="flex items-center">
+                <input type="radio" name="theme" value="light" class="mr-2" />
+                <span class="text-gray-300">Light</span>
+              </label>
+              <label class="flex items-center">
+                <input type="radio" name="theme" value="blue" class="mr-2" />
+                <span class="text-gray-300">Blue</span>
+              </label>
+            </div>
+            <button
+              id="btn-save-theme"
+              class="mt-4 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
+            >
+              Save Theme
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase Initialization (will be generated by build.yml) -->
+    <script src="./firebase-init.js"></script>
+
+    <!-- Main JavaScript Files in order -->
+    <script src="./js/utils.js"></script>
+    <script src="./js/storage.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/theme.js"></script>
+    <script src="./js/form-generator.js"></script>
+    <script src="./js/pdf-generator.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
+</html>
